@@ -1,0 +1,300 @@
+{
+  "name": "Daily COVID AI Situation Report",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        -64
+      ],
+      "id": "7b2e0617-b5cf-4de9-a4b4-19fdc20b9066",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:\\Users\\DELL\\.n8n-files\\state_summary.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1040,
+        128
+      ],
+      "id": "cd6208b6-36af-457a-92bd-2e500bdbb93c",
+      "name": "Read State Wise File"
+    },
+    {
+      "parameters": {
+        "fileSelector": "C:\\Users\\DELL\\.n8n-files\\india_summary.csv",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.readWriteFile",
+      "typeVersion": 1.1,
+      "position": [
+        -1056,
+        -256
+      ],
+      "id": "7a9ad446-6204-48cc-aac4-ad5a12d606df",
+      "name": "Read India Sumarry"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -656,
+        -256
+      ],
+      "id": "446430be-e45c-40c7-85f2-9a3d6e06ac35",
+      "name": "Extract from India"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1.1,
+      "position": [
+        -848,
+        128
+      ],
+      "id": "4b89ee56-0706-43f4-961a-8784440278fa",
+      "name": "Extract from State Wise"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Convert numbers properly\nitems.forEach(item => {\n  item.json.daily_new_cases = Number(item.json.daily_new_cases);\n});\n\n// Sort descending\nitems.sort((a, b) => b.json.daily_new_cases - a.json.daily_new_cases);\n\n// Take top 5\nconst top5 = items.slice(0, 5);\n\nconst summaryText = top5.map(item =>\n  `${item.json.state} (${item.json.daily_new_cases} cases)`\n).join(\", \");\n\nreturn [{\n  top_states_summary: summaryText\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -640,
+        128
+      ],
+      "id": "a0ddc786-5ab7-4261-b915-3c3b5a1d2328",
+      "name": "Top 5 States"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Generate a daily COVID situation report for India.\n{{ $('Extract from India').item.json.india_new_cases }}\n{{ $('Extract from India').item.json.date }}\n{{ $('Extract from India').item.json.india_confirmed_total }}\n{{ $('Extract from India').item.json.india_recoveries }}\n{{ $('Extract from India').item.json.india_deaths }}\n{{ $('Extract from India').item.json.india_positivity_rate }}\n{{ $('Extract from India').item.json.total_doses_administered }}\n{{ $('Extract from India').item.json.avg_vaccination_rate }}\n{{ $('Top 5 States').item.json.top_states_summary }}\n{{ $json.trend }}\n{{ $json.percent_change }}\n{{ $json.previous_new_cases }}\n\n\n- Summarize the current situation\n- Highlight rising or falling trends\n- Explain in **non-technical language**",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 3.1,
+      "position": [
+        -96,
+        -64
+      ],
+      "id": "1f9642b1-46eb-47d9-bca2-fb86ab815d66",
+      "name": "AI Agent"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -96,
+        176
+      ],
+      "id": "e7937e8a-eaf4-4639-bae6-b551ea0e9e57",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "P2G0gk18Spm6j6VA",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "let text = $json.output;\n\n// Remove markdown bold (**text**)\ntext = text.replace(/\\*\\*/g, \"\");\n\n// Replace escaped newline characters with real line breaks\ntext = text.replace(/\\\\n/g, \"\\n\");\n\n// Remove extra spaces\ntext = text.trim();\n\nreturn [{\n  cleaned_output: text,\n  date: $json.date\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        272,
+        80
+      ],
+      "id": "1a61c305-5fb9-4dbb-9a2f-9ff42ca9ed5a",
+      "name": "Cleaning up AI Prompts"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.2,
+      "position": [
+        -304,
+        -64
+      ],
+      "id": "ac197aa0-30e0-4e6b-89b2-e6e499cf09b1",
+      "name": "Merge Stats wise + India"
+    },
+    {
+      "parameters": {
+        "sendTo": "abdullahmahfooz101@gmail.com, monimounika9849@gmail.com, pamendrakaushik702@gmail.com, bhardwajvishal908@gmail.com, davevanshaj55646@gmail.com",
+        "subject": "=Daily COVID Situation Report – {{ $('Extract from India').item.json.date }}",
+        "emailType": "text",
+        "message": "={{ $json.cleaned_output }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.2,
+      "position": [
+        528,
+        -64
+      ],
+      "id": "889ad946-b350-4f46-9ea5-a16d0a972eab",
+      "name": "Send an Email",
+      "webhookId": "36081b11-17e1-4a20-9c0b-e324e3b36584",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "ZDJDlRCrbxhe93Gn",
+          "name": "Gmail account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Read India Sumarry",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Read State Wise File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read State Wise File": {
+      "main": [
+        [
+          {
+            "node": "Extract from State Wise",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Read India Sumarry": {
+      "main": [
+        [
+          {
+            "node": "Extract from India",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from State Wise": {
+      "main": [
+        [
+          {
+            "node": "Top 5 States",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from India": {
+      "main": [
+        [
+          {
+            "node": "Merge Stats wise + India",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Top 5 States": {
+      "main": [
+        [
+          {
+            "node": "Merge Stats wise + India",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Cleaning up AI Prompts",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Cleaning up AI Prompts": {
+      "main": [
+        [
+          {
+            "node": "Send an Email",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Stats wise + India": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "0fbe1b70-7401-423b-b87e-fb32e8f587d2",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "921defd20d9871c0f678c42ab254df8603d9377304f84062f8627947dc5fe99a"
+  },
+  "id": "RU0MKD01rNYPdOzzGvRT0",
+  "tags": []
+}
